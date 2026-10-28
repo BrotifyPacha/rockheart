@@ -1,0 +1,16 @@
+---
+xray_version: "26.10.21"
+# SHA-256 архивов релиза; при смене версии брать из Xray-*.zip.dgst
+xray_release_sha256:
+  linux-64: 0eec3ed4163c273d8c8bf821f7d219e257921cf584aa3fb970715e458e631978
+  linux-arm64-v8a: d1304946c486d98e6b886e9b931eaaaebb23835b30e217638037b7f2721d4e9c
+
+xray_port: 443
+xray_xhttp_mode: auto
+xray_loglevel: warning
+
+xray_lib_dir: /usr/local/lib/xray
+xray_config_dir: /usr/local/etc/xray
+
+# Локальные секреты на машине, откуда запускается ansible
+xray_credentials_dir: "{{ playbook_dir }}/credentials/{{ inventory_hostname }}"

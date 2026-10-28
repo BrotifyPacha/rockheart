@@ -1,0 +1,56 @@
+---
+- name: Resolve release asset
+  ansible.builtin.set_fact:
+    xray_asset: >-
+      {{ {'x86_64': 'linux-64', 'aarch64': 'linux-arm64-v8a'}[ansible_facts['architecture']] }}
+
+- name: Create xray system user
+  ansible.builtin.user:
+    name: xray
+    system: true
+    shell: /usr/sbin/nologin
+    home: /nonexistent
+    create_home: false
+
+- name: Create directories
+  ansible.builtin.file:
+    path: "{{ item.path }}"
+    state: directory
+    owner: root
+    group: "{{ item.group }}"
+    mode: "{{ item.mode }}"
+  loop:
+    - { path: "{{ xray_lib_dir }}/{{ xray_version }}", group: root, mode: "0755" }
+    - { path: "{{ xray_config_dir }}", group: xray, mode: "0750" }
+
+- name: Download xray release
+  ansible.builtin.get_url:
+    url: "https://github.com/XTLS/Xray-core/releases/download/v{{ xray_version }}/Xray-{{ xray_asset }}.zip"
+    dest: "{{ xray_lib_dir }}/Xray-{{ xray_version }}-{{ xray_asset }}.zip"
+    checksum: "sha256:{{ xray_release_sha256[xray_asset] }}"
+    mode: "0644"
+
+- name: Unpack xray release
+  ansible.builtin.unarchive:
+    src: "{{ xray_lib_dir }}/Xray-{{ xray_version }}-{{ xray_asset }}.zip"
+    dest: "{{ xray_lib_dir }}/{{ xray_version }}"
+    remote_src: true
+    creates: "{{ xray_lib_dir }}/{{ xray_version }}/xray"
+
+# geoip.dat и geosite.dat ищутся рядом с реальным бинарём, симлинк это не ломает
+- name: Link current xray version
+  ansible.builtin.file:
+    src: "{{ xray_lib_dir }}/{{ xray_version }}/xray"
+    dest: /usr/local/bin/xray
+    state: link
+    force: true
+  notify: Restart xray
+
+- name: Install systemd unit
+  ansible.builtin.template:
+    src: xray.service.j2
+    dest: /etc/systemd/system/xray.service
+    owner: root
+    group: root
+    mode: "0644"
+  notify: Restart xray

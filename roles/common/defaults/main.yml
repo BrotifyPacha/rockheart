@@ -1,0 +1,17 @@
+---
+common_packages:
+  - ca-certificates
+  - curl
+  - unzip
+  - ufw
+  - unattended-upgrades
+
+# BBR недоступен в некоторых контейнерах и старых ядрах
+common_bbr_enabled: true
+
+# Включить ufw: открыты только SSH и порт xray
+common_firewall_enabled: true
+common_ssh_port: "{{ ansible_port | default(22) }}"
+
+# Запретить вход по паролю и root-логин с паролем
+common_ssh_harden: false

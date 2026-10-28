@@ -1,0 +1,12 @@
+---
+all:
+  vars:
+    ansible_connection: local
+    xray_users: [alice, bob]
+    reality_target: www.microsoft.com
+    # В контейнере нет ни ufw-совместимого окружения, ни гарантированного BBR
+    common_firewall_enabled: false
+    common_bbr_enabled: false
+  hosts:
+    e2e:
+      ansible_host: rh-server

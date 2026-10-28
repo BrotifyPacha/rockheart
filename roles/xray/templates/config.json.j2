@@ -1,0 +1,67 @@
+{#
+  Порт xray_port принимает REALITY. Клиенты Vision обслуживаются сразу,
+  клиенты XHTTP уходят через fallback во внутренний inbound на @xhttp,
+  а всё без валидной REALITY-аутентификации проксируется на настоящий reality_target.
+#}
+{%- set ns = namespace(vision=[], xhttp=[]) -%}
+{%- for c in xray_clients -%}
+{%-   set ns.vision = ns.vision + [{'id': c.id, 'email': c.name, 'flow': 'xtls-rprx-vision'}] -%}
+{%-   set ns.xhttp = ns.xhttp + [{'id': c.id, 'email': c.name}] -%}
+{%- endfor -%}
+{%- set sniffing = {'enabled': true, 'destOverride': ['http', 'tls', 'quic'], 'routeOnly': true} -%}
+{%- set config = {
+  'log': {'loglevel': xray_loglevel, 'access': 'none'},
+  'inbounds': [
+    {
+      'tag': 'vless-vision',
+      'listen': '0.0.0.0',
+      'port': xray_port | int,
+      'protocol': 'vless',
+      'settings': {
+        'clients': ns.vision,
+        'decryption': 'none',
+        'fallbacks': [{'dest': '@xhttp'}],
+      },
+      'streamSettings': {
+        'network': 'raw',
+        'security': 'reality',
+        'realitySettings': {
+          'target': reality_target ~ ':443',
+          'serverNames': [reality_target],
+          'privateKey': xray_reality_private_key,
+          'shortIds': xray_clients | map(attribute='short_id') | list,
+        },
+      },
+      'sniffing': sniffing,
+    },
+    {
+      'tag': 'vless-xhttp',
+      'listen': '@xhttp',
+      'protocol': 'vless',
+      'settings': {
+        'clients': ns.xhttp,
+        'decryption': 'none',
+      },
+      'streamSettings': {
+        'network': 'xhttp',
+        'xhttpSettings': {
+          'path': xray_xhttp_path,
+          'mode': xray_xhttp_mode,
+        },
+      },
+      'sniffing': sniffing,
+    },
+  ],
+  'outbounds': [
+    {'tag': 'direct', 'protocol': 'freedom'},
+    {'tag': 'block', 'protocol': 'blackhole'},
+  ],
+  'routing': {
+    'domainStrategy': 'IPIfNonMatch',
+    'rules': [
+      {'ip': ['geoip:private'], 'outboundTag': 'block'},
+      {'protocol': ['bittorrent'], 'outboundTag': 'block'},
+    ],
+  },
+} -%}
+{{ config | to_nice_json(indent=2) }}

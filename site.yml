@@ -1,0 +1,26 @@
+---
+- name: Deploy rockheart exit node
+  hosts: all
+  become: true
+  pre_tasks:
+    - name: Validate inventory
+      ansible.builtin.assert:
+        that:
+          - reality_target is defined and reality_target | length > 0
+          - reality_target is not match('.*:\d+$')
+          - xray_users is defined and xray_users | length > 0
+          - xray_users | select('match', '^[a-z0-9_-]+$') | list | length == xray_users | length
+          - xray_users | unique | length == xray_users | length
+        fail_msg: >-
+          Set reality_target (hostname without port) and a non-empty unique
+          xray_users list of [a-z0-9_-] names in inventory/hosts.yml
+        quiet: true
+      tags: always
+
+  roles:
+    - role: common
+      tags: common
+    - role: xray
+      tags: xray
+    - role: clients
+      tags: clients

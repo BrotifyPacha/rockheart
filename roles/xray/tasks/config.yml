@@ -1,0 +1,18 @@
+---
+- name: Render xray config
+  ansible.builtin.template:
+    src: config.json.j2
+    dest: "{{ xray_config_dir }}/config.json"
+    owner: root
+    group: xray
+    mode: "0640"
+    validate: /usr/local/bin/xray run -test -c %s
+  notify: Restart xray
+  no_log: true
+
+- name: Enable and start xray
+  ansible.builtin.systemd_service:
+    name: xray
+    enabled: true
+    state: started
+    daemon_reload: true

@@ -1,0 +1,16 @@
+---
+# Скопируйте в inventory/hosts.yml и заполните под себя
+all:
+  vars:
+    # Пользователи VPN: [a-z0-9_-], по одному на устройство/человека
+    xray_users:
+      - alice
+      - bob
+
+    # Сайт, под который маскируется сервер (см. README → "Choosing reality_target")
+    reality_target: www.example.com
+
+    ansible_user: root
+  hosts:
+    exit-1:
+      ansible_host: 203.0.113.10

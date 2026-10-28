@@ -1,0 +1,14 @@
+---
+- name: Install xray
+  ansible.builtin.import_tasks: install.yml
+
+- name: Check reality target
+  ansible.builtin.import_tasks: check_target.yml
+  tags: check_target
+
+- name: Prepare credentials
+  ansible.builtin.import_tasks: credentials.yml
+  tags: clients
+
+- name: Configure xray
+  ansible.builtin.import_tasks: config.yml

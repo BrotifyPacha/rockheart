@@ -1,0 +1,28 @@
+---
+- name: TLS ping reality target
+  ansible.builtin.command: /usr/local/bin/xray tls ping {{ reality_target | quote }}
+  register: xray_tls_ping
+  changed_when: false
+  failed_when: false
+  check_mode: false
+
+# Сайт-маска обязан поддерживать TLS 1.3, иначе REALITY не работает
+- name: Assert reality target supports TLS 1.3
+  ansible.builtin.assert:
+    that:
+      - xray_tls_ping.rc == 0
+      - "'TLS 1.3' in xray_tls_ping.stdout"
+    fail_msg: "{{ reality_target }} is unreachable from the server or lacks TLS 1.3:\n{{ xray_tls_ping.stdout }}{{ xray_tls_ping.stderr }}"
+    quiet: true
+
+- name: Warn when reality target lacks post-quantum key exchange
+  ansible.builtin.debug:
+    msg: >-
+      {{ reality_target }} does not negotiate X25519MLKEM768. Modern Chrome does,
+      so a target without it makes the handshake less browser-like. Consider another target.
+  when: xray_tls_ping.stdout is not search('Post-Quantum key exchange:\s+true')
+
+- name: Show TLS ping result
+  ansible.builtin.debug:
+    var: xray_tls_ping.stdout_lines
+  tags: [never, check_target]

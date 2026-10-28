@@ -1,0 +1,63 @@
+---
+- name: Install base packages
+  ansible.builtin.apt:
+    name: "{{ common_packages }}"
+    state: present
+    update_cache: true
+    cache_valid_time: 3600
+
+- name: Enable unattended security upgrades
+  ansible.builtin.copy:
+    dest: /etc/apt/apt.conf.d/20auto-upgrades
+    content: |
+      APT::Periodic::Update-Package-Lists "1";
+      APT::Periodic::Unattended-Upgrade "1";
+    owner: root
+    group: root
+    mode: "0644"
+
+- name: Enable BBR congestion control
+  ansible.posix.sysctl:
+    name: "{{ item.name }}"
+    value: "{{ item.value }}"
+    sysctl_file: /etc/sysctl.d/90-rockheart.conf
+    reload: true
+  loop:
+    - { name: net.core.default_qdisc, value: fq }
+    - { name: net.ipv4.tcp_congestion_control, value: bbr }
+  when: common_bbr_enabled | bool
+
+- name: Harden sshd
+  ansible.builtin.copy:
+    dest: /etc/ssh/sshd_config.d/10-rockheart.conf
+    content: |
+      PasswordAuthentication no
+      KbdInteractiveAuthentication no
+      PermitRootLogin prohibit-password
+    owner: root
+    group: root
+    mode: "0644"
+  when: common_ssh_harden | bool
+  notify: Reload sshd
+
+- name: Configure firewall
+  when: common_firewall_enabled | bool
+  block:
+    # Сначала разрешаем SSH, чтобы не потерять доступ при включении ufw
+    - name: Allow SSH
+      community.general.ufw:
+        rule: limit
+        port: "{{ common_ssh_port | string }}"
+        proto: tcp
+
+    - name: Allow xray
+      community.general.ufw:
+        rule: allow
+        port: "{{ xray_port | default(443) | string }}"
+        proto: tcp
+
+    - name: Enable ufw with default deny incoming
+      community.general.ufw:
+        state: enabled
+        policy: deny
+        direction: incoming

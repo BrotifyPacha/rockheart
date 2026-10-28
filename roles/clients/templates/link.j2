@@ -1,0 +1,8 @@
+{%- set client, kind = item -%}
+{%- set host = '[' ~ clients_server_address ~ ']' if ':' in clients_server_address else clients_server_address -%}
+{%- if kind == 'xhttp' -%}
+{%-   set transport = 'type=xhttp&mode=' ~ xray_xhttp_mode ~ '&path=' ~ (xray_xhttp_path | urlencode | replace('/', '%2F')) -%}
+{%- else -%}
+{%-   set transport = 'type=tcp&flow=xtls-rprx-vision' -%}
+{%- endif -%}
+vless://{{ client.id }}@{{ host }}:{{ xray_port }}?encryption=none&{{ transport }}&security=reality&sni={{ reality_target }}&fp=chrome&pbk={{ xray_reality_public_key }}&sid={{ client.short_id }}#rockheart-{{ kind }}-{{ inventory_hostname }}-{{ client.name }}
